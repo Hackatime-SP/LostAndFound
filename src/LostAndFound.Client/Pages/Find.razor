@@ -1,0 +1,147 @@
+@page "/find"
+@using LostAndFound.Client.Services
+@using LostAndFound.Shared.DTOs
+@inject DropService DropService
+
+<PageTitle>Find Something - Lost & Found</PageTitle>
+
+<h1 style="text-align: center; margin-bottom: 2rem;">?? Find Something</h1>
+
+<div class="card fade-in" style="margin-bottom: 1rem;">
+    <label class="form-label">Filter by category (optional)</label>
+    <div class="btn-group">
+        <button class="btn @(selectedCategory == null ? "btn-primary" : "btn-secondary")" 
+                @onclick="() => selectedCategory = null">All</button>
+        <button class="btn @(selectedCategory == "Thought" ? "btn-primary" : "btn-secondary")" 
+                @onclick='() => selectedCategory = "Thought"'>?? Thoughts</button>
+        <button class="btn @(selectedCategory == "Secret" ? "btn-primary" : "btn-secondary")" 
+                @onclick='() => selectedCategory = "Secret"'>?? Secrets</button>
+        <button class="btn @(selectedCategory == "Advice" ? "btn-primary" : "btn-secondary")" 
+                @onclick='() => selectedCategory = "Advice"'>?? Advice</button>
+        <button class="btn @(selectedCategory == "Story" ? "btn-primary" : "btn-secondary")" 
+                @onclick='() => selectedCategory = "Story"'>?? Stories</button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="spinner"></div>
+}
+else if (currentDrop != null)
+{
+    <div class="card fade-in" style="@GetCategoryStyle(currentDrop.Category)">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <span class="category-badge @GetCategoryClass(currentDrop.Category)">
+                @GetCategoryIcon(currentDrop.Category) @currentDrop.Category
+            </span>
+            <span class="drop-meta">Found @currentDrop.TimesFound time(s)</span>
+        </div>
+        
+        <div class="drop-content">
+            @currentDrop.Content
+        </div>
+        
+        <div class="drop-meta">
+            Dropped @FormatTimeAgo(currentDrop.DroppedAt)
+        </div>
+    </div>
+
+    <div style="text-align: center;">
+        <button class="btn btn-primary" @onclick="FindAnother" disabled="@isLoading">
+            ?? Find Another
+        </button>
+    </div>
+}
+else if (hasSearched)
+{
+    <div class="card fade-in" style="text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">??</div>
+        <h3>Nothing found</h3>
+        <p style="color: #888;">The void is empty. Be the first to leave something behind!</p>
+        <a href="/drop" class="btn btn-primary">? Drop Something</a>
+    </div>
+}
+else
+{
+    <div class="card fade-in" style="text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">?</div>
+        <h3>Ready to discover?</h3>
+        <p style="color: #888;">Click below to find something a stranger left behind.</p>
+        <button class="btn btn-primary" @onclick="FindRandom">?? Reveal a Drop</button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-error fade-in" style="margin-top: 1rem;">@errorMessage</div>
+}
+
+@code {
+    private DropResponse? currentDrop;
+    private string? selectedCategory;
+    private bool isLoading = false;
+    private bool hasSearched = false;
+    private string errorMessage = "";
+
+    private async Task FindRandom()
+    {
+        await LoadDrop();
+    }
+
+    private async Task FindAnother()
+    {
+        await LoadDrop();
+    }
+
+    private async Task LoadDrop()
+    {
+        isLoading = true;
+        errorMessage = "";
+        currentDrop = null;
+
+        try
+        {
+            currentDrop = await DropService.FindRandomAsync(selectedCategory);
+            hasSearched = true;
+        }
+        catch (Exception)
+        {
+            errorMessage = "Could not connect to the server. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetCategoryIcon(string category) => category switch
+    {
+        "Thought" => "??",
+        "Secret" => "??",
+        "Advice" => "??",
+        "Story" => "??",
+        _ => "?"
+    };
+
+    private string GetCategoryClass(string category) => $"category-{category.ToLower()}";
+
+    private string GetCategoryStyle(string category) => category switch
+    {
+        "Thought" => "border-left: 4px solid #4ecdc4;",
+        "Secret" => "border-left: 4px solid #ff6b6b;",
+        "Advice" => "border-left: 4px solid #ffd93d;",
+        "Story" => "border-left: 4px solid #6c5ce7;",
+        _ => ""
+    };
+
+    private string FormatTimeAgo(DateTime droppedAt)
+    {
+        var span = DateTime.UtcNow - droppedAt;
+
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes} minute(s) ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours} hour(s) ago";
+        if (span.TotalDays < 30) return $"{(int)span.TotalDays} day(s) ago";
+        return droppedAt.ToString("MMM d, yyyy");
+    }
+}

@@ -1,0 +1,150 @@
+@page "/drop"
+@using LostAndFound.Client.Services
+@using LostAndFound.Shared.DTOs
+@inject DropService DropService
+
+<PageTitle>Drop Something - Lost & Found</PageTitle>
+
+<h1 style="text-align: center; margin-bottom: 2rem;">? Drop Something</h1>
+
+<div class="card fade-in">
+    @if (isSubmitted)
+    {
+        <div class="alert alert-success">
+            <strong>Dropped!</strong> Your @selectedCategory.ToLower() has been left for someone to find.
+        </div>
+        <div style="text-align: center; margin-top: 1rem;">
+            <button class="btn btn-primary" @onclick="Reset">Drop Another</button>
+            <a href="/find" class="btn btn-secondary">Find Something</a>
+        </div>
+    }
+    else
+    {
+        <div class="form-group">
+            <label class="form-label">What are you leaving behind?</label>
+            <div class="category-grid">
+                <div class="category-option thought @(selectedCategory == "Thought" ? "selected" : "")" 
+                     @onclick='() => selectedCategory = "Thought"'>
+                    <div class="icon">??</div>
+                    <div>Thought</div>
+                </div>
+                <div class="category-option secret @(selectedCategory == "Secret" ? "selected" : "")" 
+                     @onclick='() => selectedCategory = "Secret"'>
+                    <div class="icon">??</div>
+                    <div>Secret</div>
+                </div>
+                <div class="category-option advice @(selectedCategory == "Advice" ? "selected" : "")" 
+                     @onclick='() => selectedCategory = "Advice"'>
+                    <div class="icon">??</div>
+                    <div>Advice</div>
+                </div>
+                <div class="category-option story @(selectedCategory == "Story" ? "selected" : "")" 
+                     @onclick='() => selectedCategory = "Story"'>
+                    <div class="icon">??</div>
+                    <div>Story</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Your anonymous message</label>
+            <textarea class="form-control" 
+                      @bind="content" 
+                      placeholder="@GetPlaceholder()"
+                      maxlength="2000"></textarea>
+            <div style="text-align: right; color: #666; font-size: 0.85rem; margin-top: 0.5rem;">
+                @content.Length / 2000
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-error">@errorMessage</div>
+        }
+
+        <button class="btn btn-primary" 
+                style="width: 100%;" 
+                @onclick="Submit" 
+                disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span>Dropping...</span>
+            }
+            else
+            {
+                <span>?? Let it go</span>
+            }
+        </button>
+    }
+</div>
+
+<div class="card fade-in" style="background: rgba(255, 255, 255, 0.03);">
+    <p style="color: #888; text-align: center; margin: 0;">
+        ?? Completely anonymous. No tracking. No accounts. Just you and the void.
+    </p>
+</div>
+
+@code {
+    private string selectedCategory = "Thought";
+    private string content = "";
+    private bool isSubmitting = false;
+    private bool isSubmitted = false;
+    private string errorMessage = "";
+
+    private string GetPlaceholder() => selectedCategory switch
+    {
+        "Thought" => "What's on your mind right now?",
+        "Secret" => "What have you never told anyone?",
+        "Advice" => "What wisdom would you share with a stranger?",
+        "Story" => "Tell us about a moment that changed you...",
+        _ => "Write something..."
+    };
+
+    private async Task Submit()
+    {
+        errorMessage = "";
+
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            errorMessage = "Please write something before dropping.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var request = new CreateDropRequest
+            {
+                Category = selectedCategory,
+                Content = content
+            };
+
+            var result = await DropService.CreateDropAsync(request);
+            
+            if (result != null)
+            {
+                isSubmitted = true;
+            }
+            else
+            {
+                errorMessage = "Something went wrong. Please try again.";
+            }
+        }
+        catch (Exception)
+        {
+            errorMessage = "Could not connect to the server. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Reset()
+    {
+        content = "";
+        isSubmitted = false;
+        errorMessage = "";
+    }
+}
