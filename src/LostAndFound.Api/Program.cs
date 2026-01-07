@@ -16,7 +16,11 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin() 
+        policy.WithOrigins(
+                "http://localhost:5082",
+                "https://localhost:7111",
+                "http://localhost:5056",
+                "https://localhost:7264")
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -33,13 +37,18 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline
+// CORS must come before other middleware
+app.UseCors();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
-app.UseCors();
 app.MapControllers();
 
 app.Run();
