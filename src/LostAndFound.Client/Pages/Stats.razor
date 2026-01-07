@@ -1,0 +1,113 @@
+@page "/stats"
+@using LostAndFound.Client.Services
+@inject DropService DropService
+
+<PageTitle>Stats - Lost & Found</PageTitle>
+
+<h1 style="text-align: center; margin-bottom: 2rem;">?? Community Stats</h1>
+
+@if (isLoading)
+{
+    <div class="spinner"></div>
+}
+else if (stats != null)
+{
+    <div class="stats-hero fade-in">
+        <div class="stat-card primary">
+            <div class="stat-number">@stats.TotalDrops</div>
+            <div class="stat-label">Drops Left Behind</div>
+        </div>
+        <div class="stat-card secondary">
+            <div class="stat-number">@stats.TotalFinds</div>
+            <div class="stat-label">Times Found</div>
+        </div>
+    </div>
+
+    <div class="card fade-in">
+        <h3 style="margin-bottom: 1.5rem;">By Category</h3>
+        <div class="category-stats">
+            @foreach (var cat in stats.ByCategory.OrderByDescending(c => c.Count))
+            {
+                var percentage = stats.TotalDrops > 0 
+                    ? (double)cat.Count / stats.TotalDrops * 100 
+                    : 0;
+                
+                <div class="category-stat-row">
+                    <div class="category-stat-info">
+                        <span class="category-badge @GetCategoryClass(cat.Category)">
+                            @GetCategoryIcon(cat.Category) @cat.Category
+                        </span>
+                        <span class="category-count">@cat.Count drops</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill @GetCategoryClass(cat.Category)" 
+                             style="width: @percentage.ToString("F0")%"></div>
+                    </div>
+                </div>
+            }
+
+            @if (!stats.ByCategory.Any())
+            {
+                <p style="color: #888; text-align: center;">No drops yet. Be the first!</p>
+            }
+        </div>
+    </div>
+
+    <div class="card fade-in" style="text-align: center; background: rgba(102, 126, 234, 0.1);">
+        <h3>Join the Community</h3>
+        <p style="color: #ccc; margin-bottom: 1.5rem;">
+            Every drop is a connection. Every find is a discovery.
+        </p>
+        <div class="hero-buttons" style="justify-content: center;">
+            <a href="/drop" class="btn btn-primary">? Drop Something</a>
+            <a href="/find" class="btn btn-secondary">?? Find Something</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card fade-in" style="text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">??</div>
+        <h3>Could not load stats</h3>
+        <p style="color: #888;">Please try again later.</p>
+        <button class="btn btn-primary" @onclick="LoadStats">Retry</button>
+    </div>
+}
+
+@code {
+    private StatsResponse? stats;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+    }
+
+    private async Task LoadStats()
+    {
+        isLoading = true;
+        try
+        {
+            stats = await DropService.GetStatsAsync();
+        }
+        catch
+        {
+            stats = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetCategoryIcon(string category) => category switch
+    {
+        "Thought" => "??",
+        "Secret" => "??",
+        "Advice" => "??",
+        "Story" => "??",
+        _ => "?"
+    };
+
+    private string GetCategoryClass(string category) => $"category-{category.ToLower()}";
+}
